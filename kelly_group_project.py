@@ -35,7 +35,7 @@ schema = StructType([
 ])
 
 #read/stream data
-taxi_data = spark.readStream.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
+taxi_data = spark.readStream.schema(schema).csv("INSERT_PATH_TO_DATA_HERE")
 
 #print streaming data to console
 query = taxi_data.writeStream.format("console").outputMode("append").start()
