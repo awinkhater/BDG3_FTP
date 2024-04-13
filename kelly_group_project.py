@@ -35,11 +35,11 @@ schema = StructType([
 ])
 
 #read/stream data
-taxi_data = spark.readStream.schema(schema).csv("INSERT_PATH_TO_DATA_HERE")
+taxi_data = spark.readStream.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
 
 #print streaming data to console
 query = taxi_data.writeStream.format("console").outputMode("append").start()
-query.awaitTermination()
+#query.awaitTermination()
 
 #transform the data
 transformed_data = taxi_data.select(
@@ -57,14 +57,13 @@ transformed_data = taxi_data.select(
     dayofweek("tpep_pickup_datetime").alias("pickup_dayofweek")
 )
 
-#basic eda/analysis
+#start streaming query for hourly average fare calculation
 hourly_avg_fare = transformed_data.groupBy("pickup_hour").agg(avg("fare_amount").alias("avg_fare"))
-hourly_avg_fare.writeStream.format("console").outputMode("complete").start().awaitTermination()
+hourly_avg_fare_query = hourly_avg_fare.writeStream.format("console").outputMode("complete").start()
 
-#####CONSOLE OUTPUT HANGS HERE
-
+#start streaming query for daily average fare calculation
 daily_avg_fare = transformed_data.groupBy("pickup_dayofweek").agg(avg("fare_amount").alias("avg_fare"))
-daily_avg_fare.writeStream.format("console").outputMode("complete").start().awaitTermination()
+daily_avg_fare_query = daily_avg_fare.writeStream.format("console").outputMode("complete").start()
 
 #prepare data for forecasting
 feature_cols = ["passenger_count", "trip_distance", "pickup_latitude", "pickup_longitude", "dropoff_latitude", "dropoff_longitude", "payment_type", "pickup_hour", "pickup_dayofweek"]
@@ -81,4 +80,11 @@ model = pipeline.fit(transformed_data)
 
 #predictions
 predictions = model.transform(transformed_data)
-predictions.select("total_amount", "prediction").writeStream.format("console").outputMode("append").start().awaitTermination()
+
+#start the streaming query for predictions
+predictions_query = predictions.select("total_amount", "prediction").writeStream.format("console").outputMode("append").start()
+
+#await termination for all streaming queries
+hourly_avg_fare_query.awaitTermination()
+daily_avg_fare_query.awaitTermination()
+predictions_query.awaitTermination()
