@@ -297,7 +297,7 @@ france_agg_sql.show()
 #Show difference in query execution times 
 print(f"Performance difference: PySpark was {q3_pyspark_time / q3_sql_time:.2f} times {'slower' if q3_pyspark_time > q3_sql_time else 'faster'} than SQL")
 # %%
-#Q4 Srinivas
+#Q4
 
 #set start time 
 q4_pyspark_start_time = time.time()
@@ -363,7 +363,7 @@ full_outer_join_df = german_cities.join(french_cities, "CityID", "full_outer")\
 # Show the combined DataFrame
 full_outer_join_df.show()
 
-#stop timer (paul)
+#stop timer 
 q5_pyspark_end_time = time.time()
 #calculate query time 
 q5_pyspark_time = q5_pyspark_end_time - q5_pyspark_start_time
@@ -401,7 +401,7 @@ print(f"SQL execution time: {q5_sql_time} seconds")
 #Show difference in query execution times 
 print(f"Performance difference: PySpark was {q5_pyspark_time / q5_sql_time:.2f} times {'slower' if q5_pyspark_time > q5_sql_time else 'faster'} than SQL")
 # %%
-#ALEX Q6
+#Q6
 #Pyspark Dataframe operation
 
 #set start time 
@@ -435,7 +435,7 @@ q6_pyspark_time = q6_pyspark_end_time - q6_pyspark_start_time
 print(f"PySpark execution time: {q6_pyspark_time} seconds")
 
 # %%
-#Alex Q6
+#Q6
 #SQL Version
 
 #set start time 
@@ -477,43 +477,55 @@ print(f"SQL execution time: {q6_sql_time} seconds")
 print(f"Performance difference: PySpark was {q6_pyspark_time / q6_sql_time:.2f} times {'slower' if q6_pyspark_time > q6_sql_time else 'faster'} than SQL")
 # %%
 # Q7
+# Measure the start time of the process
 q7_french_start_time = time.time()
 
+# Order the dataset by population in descending order and select the top 20 cities
 top_20_cities = french_cities.orderBy("Population", ascending=False).limit(20)
-city_names = top_20_cities.select("CityName").collect()
-cultural_sites = top_20_cities.select("CulturalSites").collect()
-city_names = [row.CityName for row in city_names]
-cultural_sites = [row.CulturalSites for row in cultural_sites]
+city_names = top_20_cities.select("CityName").collect()# Collect the names of these cities from the DataFrame
+cultural_sites = top_20_cities.select("CulturalSites").collect()# Collect the number of cultural sites for each city from the DataFrame
+city_names = [row.CityName for row in city_names]# Extract the city names into a list for easier manipulation later
+cultural_sites = [row.CulturalSites for row in cultural_sites]# Extract the cultural sites data into a list
 
-
+# Create a dictionary pairing city names with their corresponding cultural sites counts
 data_dict = {'CityName': city_names, 'CulturalSites': cultural_sites}
-df = pd.DataFrame(data_dict)
+df = pd.DataFrame(data_dict)# Convert the dictionary to a DataFrame for visualization
+
+# Create a bar chart using Plotly Express to visualize the number of cultural sites in each city
 fig = px.bar(df, x="CityName", y="CulturalSites",
              title="Cultural Sites in Top 20 Populous French Cities")
-fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")
-fig.show()
+fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")# Create a bar chart using Plotly Express to visualize the number of cultural sites in each city
+fig.show()# Display the bar chart
 
-q7_french_end_time = time.time()
-q7_french_time = q7_french_end_time - q7_french_start_time
-print(f"frech Viz execution time: {q7_french_time} seconds")
+
+q7_french_end_time = time.time()# Measure the end time of the process
+q7_french_time = q7_french_end_time - q7_french_start_time# Calculate the total execution time of the visualization process
+print(f"frech Viz execution time: {q7_french_time} seconds")# Print the execution time
 
 # %%
 #Q7
-q7_german_start_time = time.time()
+q7_german_start_time = time.time()# Measure the start time of the process for performance analysis
 
+# Order the German cities dataset by population in descending order and select the top 20 cities
 top_20_cities_german = german_cities.orderBy("Population", ascending=False).limit(20)
-city_names = top_20_cities_german.select("CityName").collect()
-cultural_sites = top_20_cities_german.select("CulturalSites").collect()
-city_names = [row.CityName for row in city_names]
-cultural_sites = [row.CulturalSites for row in cultural_sites]
-data_dict = {'CityName': city_names, 'CulturalSites': cultural_sites}
-df = pd.DataFrame(data_dict)
+city_names = top_20_cities_german.select("CityName").collect()# Collect the names of these top 20 cities from the DataFrame
+cultural_sites = top_20_cities_german.select("CulturalSites").collect()# Collect the number of cultural sites for each of these cities from the DataFrame
+city_names = [row.CityName for row in city_names]# Convert the collected city names into a list for further use
+cultural_sites = [row.CulturalSites for row in cultural_sites]# Convert the collected number of cultural sites into a list
+data_dict = {'CityName': city_names, 'CulturalSites': cultural_sites}# Create a dictionary that maps city names to their corresponding number of cultural sites
+df = pd.DataFrame(data_dict)# Convert the dictionary into a DataFrame for easier visualization
+
+# Create a bar chart using Plotly Express to show the number of cultural sites in each top city
 fig = px.bar(df, x="CityName", y="CulturalSites",
              title="Cultural Sites in Top 20 Populous German Cities")
-fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")
+fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")# Update the chart layout to include more informative axis titles
+
 fig.show()
 
-q7_german_end_time = time.time()
-q7_german_time = q7_german_end_time - q7_german_start_time
-print(f"German Viz execution time: {q7_german_time} seconds")
+q7_german_end_time = time.time()# Measure the end time of the process
+
+q7_german_time = q7_german_end_time - q7_german_start_time# Calculate the total execution time of the visualization process
+
+print(f"German Viz execution time: {q7_german_time} seconds")# Print the execution time to monitor performance
+
 # %%
