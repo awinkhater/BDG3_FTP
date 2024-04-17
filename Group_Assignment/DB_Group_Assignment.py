@@ -476,6 +476,8 @@ print(f"SQL execution time: {q6_sql_time} seconds")
 #Show difference in query execution times 
 print(f"Performance difference: PySpark was {q6_pyspark_time / q6_sql_time:.2f} times {'slower' if q6_pyspark_time > q6_sql_time else 'faster'} than SQL")
 # %%
+# Q7
+q7_french_start_time = time.time()
 
 top_20_cities = french_cities.orderBy("Population", ascending=False).limit(20)
 city_names = top_20_cities.select("CityName").collect()
@@ -491,8 +493,14 @@ fig = px.bar(df, x="CityName", y="CulturalSites",
 fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")
 fig.show()
 
+q7_french_end_time = time.time()
+q7_french_time = q7_french_end_time - q7_french_start_time
+print(f"frech Viz execution time: {q7_french_time} seconds")
 
 # %%
+#Q7
+q7_german_start_time = time.time()
+
 top_20_cities_german = german_cities.orderBy("Population", ascending=False).limit(20)
 city_names = top_20_cities_german.select("CityName").collect()
 cultural_sites = top_20_cities_german.select("CulturalSites").collect()
@@ -504,4 +512,8 @@ fig = px.bar(df, x="CityName", y="CulturalSites",
              title="Cultural Sites in Top 20 Populous German Cities")
 fig.update_layout(xaxis_title="City", yaxis_title="Number of Cultural Sites")
 fig.show()
+
+q7_german_end_time = time.time()
+q7_german_time = q7_german_end_time - q7_german_start_time
+print(f"German Viz execution time: {q7_german_time} seconds")
 # %%
