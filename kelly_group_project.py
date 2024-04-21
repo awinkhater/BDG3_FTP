@@ -1,10 +1,13 @@
+#All commented code maxes out java heap memory in local mode
+
 import os
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, avg, desc
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, TimestampType
 from pyspark.sql.functions import *
-from pyspark.ml.regression import RandomForestRegressor
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml import Pipeline
+#from pyspark.ml.regression import RandomForestRegressor
+#from pyspark.ml.feature import VectorAssembler
+#from pyspark.ml import Pipeline
 
 #create session
 spark = SparkSession.builder.appName("NYC_Taxi_Streaming").getOrCreate()
@@ -36,58 +39,67 @@ schema = StructType([
 #read/stream data
 taxi_data = spark.readStream.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
 
-#read CSVs into static dataframe
-static_data = spark.read.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
+# Start a streaming query to get the schema
+#schema_query = taxi_data.writeStream.format("memory").queryName("schema_data").outputMode("append").start()
 
-#create pickup_hour and pickup_dayofweek columns
-static_data = static_data.withColumn("pickup_hour", hour("tpep_pickup_datetime"))
-static_data = static_data.withColumn("pickup_dayofweek", dayofweek("tpep_pickup_datetime"))
+# Get the resulting DataFrame from the in-memory table
+#schema_df = spark.sql("SELECT * FROM schema_data")
 
-#transform static data
-transformed_static_data = static_data.select(
-    "VendorID",
-    "passenger_count",
-    "trip_distance",
-    "pickup_latitude",
-    "pickup_longitude",
-    "dropoff_latitude",
-    "dropoff_longitude",
-    "payment_type",
-    "fare_amount",
-    "total_amount",
-    "pickup_hour",
-    "pickup_dayofweek"
+# Get the number of rows and columns
+#num_rows = schema_df.count()
+#num_cols = len(schema_df.columns)
+
+# Print the DataFrame shape
+#print(f"DataFrame shape: ({num_rows}, {num_cols})")
+
+# Start a streaming query to get the descriptive statistics
+#describe_query = taxi_data.writeStream.format("memory").queryName("describe_data").outputMode("append").start()
+
+# Get the resulting DataFrame from the in-memory table
+#describe_df = spark.sql("SELECT * FROM describe_data")
+
+# Get the descriptive statistics
+#describe_stats = describe_df.describe()
+
+# Print the descriptive statistics
+#describe_stats.show()
+
+# Calculate averages for various columns
+averages = taxi_data.select(
+    avg("passenger_count").alias("Avg_Passenger_Count"),
+    avg("trip_distance").alias("Avg_Trip_Distance"),
+    avg("fare_amount").alias("Avg_Fare_Amount"),
+    avg("extra").alias("Avg_Surcharge"),
+    avg("mta_tax").alias("Avg_MTA_Tax"),
+    avg("tip_amount").alias("Avg_Tip_Amount"),
+    avg("tolls_amount").alias("Avg_Tolls_Amount"),
+    avg("total_amount").alias("Avg_Total_Amount")
 )
+averages_query = averages.writeStream.format("console").outputMode("complete").start()
 
-#prepare data for forecasting
-feature_cols = ["passenger_count", "trip_distance", "pickup_latitude", "pickup_longitude", "dropoff_latitude", "dropoff_longitude", "payment_type", "pickup_hour", "pickup_dayofweek"]
-vector_assembler = VectorAssembler(inputCols=feature_cols, outputCol="features", handleInvalid="skip")
-rf_regressor = RandomForestRegressor(featuresCol="features", labelCol="total_amount")
+# Aggregate the data by trip_distance and count the occurrences
+trip_distance_counts = taxi_data.groupBy("trip_distance").agg(count("*").alias("count"))
 
-#create pipeline
-pipeline = Pipeline(stages=[vector_assembler, rf_regressor])
+# Sort the aggregated DataFrame by trip_distance and count in ascending order
+sorted_trip_distance_counts = trip_distance_counts.orderBy("trip_distance", "count")
 
-#train model on static data
-model = pipeline.fit(transformed_static_data)
+# Get the 10 shortest trips by taking the first 10 rows of the sorted DataFrame
+shortest_trips = sorted_trip_distance_counts.limit(10)
 
-#start streaming query and make fare amount predictions
-transformed_taxi_data = taxi_data.select(
-    "VendorID",
-    "passenger_count",
-    "trip_distance",
-    "pickup_latitude",
-    "pickup_longitude",
-    "dropoff_latitude",
-    "dropoff_longitude",
-    "payment_type",
-    "fare_amount",
-    "total_amount",
-    hour("tpep_pickup_datetime").alias("pickup_hour"),
-    dayofweek("tpep_pickup_datetime").alias("pickup_dayofweek")
-)
+# Start a streaming query to show the shortest trips
+shortest_trips_query = shortest_trips.writeStream.format("console").outputMode("complete").start()
 
-predictions = model.transform(transformed_taxi_data)
-predictions_query = predictions.select("total_amount", "prediction").writeStream.format("console").outputMode("append").start()
+# Sort the aggregated DataFrame by trip_distance and count in descending order
+sorted_trip_distance_counts = trip_distance_counts.orderBy("trip_distance", "count", ascending=False)
+
+# Get the 10 largest trips by taking the first 10 rows of the sorted DataFrame
+largest_trips = sorted_trip_distance_counts.limit(10)
+
+# Start a streaming query to show the largest trips
+largest_trips_query = largest_trips.writeStream.format("console").outputMode("complete").start()
+
+# Combine the 10 shortest and 10 largest trips into a single DataFrame
+ls_df = shortest_trips.union(largest_trips)
 
 #start streaming query for hourly average fare calculation
 hourly_avg_fare = taxi_data.select(
@@ -123,7 +135,69 @@ daily_avg_fare = taxi_data.select(
 ).groupBy("pickup_dayofweek").agg(avg("fare_amount").alias("avg_fare"))
 daily_avg_fare_query = daily_avg_fare.writeStream.format("console").outputMode("complete").start()
 
+############ DON'T ATTEMPT TO MODEL OR PREDICT - NOT ENOUGH MEMORY IN LOCAL MODE
+#read CSVs into static dataframe
+#static_data = spark.read.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
+
+#create pickup_hour and pickup_dayofweek columns
+#static_data = static_data.withColumn("pickup_hour", hour("tpep_pickup_datetime"))
+#static_data = static_data.withColumn("pickup_dayofweek", dayofweek("tpep_pickup_datetime"))
+
+#transform static data
+#transformed_static_data = static_data.select(
+#    "VendorID",
+#    "passenger_count",
+#    "trip_distance",
+#    "pickup_latitude",
+#    "pickup_longitude",
+#    "dropoff_latitude",
+#    "dropoff_longitude",
+#    "payment_type",
+#    "fare_amount",
+#    "total_amount",
+#    "pickup_hour",
+#    "pickup_dayofweek"
+#)
+
+#prepare data for forecasting
+#feature_cols = ["passenger_count", "trip_distance", "pickup_latitude", "pickup_longitude", "dropoff_latitude", "dropoff_longitude", "payment_type", "pickup_hour", "pickup_dayofweek"]
+#vector_assembler = VectorAssembler(inputCols=feature_cols, outputCol="features", handleInvalid="skip")
+#rf_regressor = RandomForestRegressor(featuresCol="features", labelCol="total_amount")
+
+#create pipeline
+#pipeline = Pipeline(stages=[vector_assembler, rf_regressor])
+
+#train model on static data
+#model = pipeline.fit(transformed_static_data)
+
+#start streaming query and make fare amount predictions
+#transformed_taxi_data = taxi_data.select(
+#    "VendorID",
+#    "passenger_count",
+#    "trip_distance",
+#    "pickup_latitude",
+#    "pickup_longitude",
+#    "dropoff_latitude",
+#    "dropoff_longitude",
+#    "payment_type",
+#    "fare_amount",
+#    "total_amount",
+#    hour("tpep_pickup_datetime").alias("pickup_hour"),
+#    dayofweek("tpep_pickup_datetime").alias("pickup_dayofweek")
+#)
+
+#predictions = model.transform(transformed_taxi_data)
+#predictions_query = predictions.select("total_amount", "prediction").writeStream.format("console").outputMode("append").start()
+
 #await termination for all streaming queries
+#Vendor_frame_query.awaitTermination()
+#schema_query.awaitTermination()
+#describe_query.awaitTermination()
+
+# Stop the streaming query
+shortest_trips_query.awaitTermination()
+largest_trips_query.awaitTermination()
+averages_query.awaitTermination()
 hourly_avg_fare_query.awaitTermination()
 daily_avg_fare_query.awaitTermination()
-predictions_query.awaitTermination()
+#predictions_query.awaitTermination()
