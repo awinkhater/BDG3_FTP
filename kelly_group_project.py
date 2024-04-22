@@ -1,5 +1,5 @@
 #All commented code maxes out java heap memory in local mode
-
+#%%
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, desc
@@ -37,8 +37,8 @@ schema = StructType([
 ])
 
 #read/stream data
-taxi_data = spark.readStream.schema(schema).csv("C:\\Users\\pjk\\Desktop\\big_data\\archive\\")
-
+taxi_data = spark.readStream.schema(schema).csv("/Users/charanreddy/Desktop/GWU_DS/DATS 6450/SparkStreamProject/Data")
+#%%
 # Start a streaming query to get the schema
 #schema_query = taxi_data.writeStream.format("memory").queryName("schema_data").outputMode("append").start()
 
@@ -201,3 +201,59 @@ averages_query.awaitTermination()
 hourly_avg_fare_query.awaitTermination()
 daily_avg_fare_query.awaitTermination()
 #predictions_query.awaitTermination()
+
+
+
+#Charan Code 
+
+
+# %%
+# Total Fare Amount Collected Over Time
+total_fare_query = taxi_data \
+    .withWatermark("tpep_pickup_datetime", "1 hour") \
+    .groupBy(window("tpep_pickup_datetime", "1 hour")) \
+    .agg(sum("fare_amount").alias("total_fare")) \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .queryName("total_fare") \
+    .start()
+
+# %%
+# Average Passenger Count Per Trip Type
+avg_passenger_query = taxi_data \
+    .groupBy("payment_type") \
+    .agg(avg("passenger_count").alias("avg_passengers")) \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .queryName("avg_passenger_count") \
+    .start()
+
+#%%
+# High Fare Ongoing Trips
+high_fare_trips_query = taxi_data \
+    .where("fare_amount > 50") \
+    .select("VendorID", "tpep_pickup_datetime", "tpep_dropoff_datetime", "fare_amount", "trip_distance") \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .queryName("high_fare_trips") \
+    .start()
+# %%
+
+from pyspark.sql.functions import window, sum
+
+# streaming query for live number of passengers
+live_passenger_count_query = taxi_data \
+    .groupBy(window("tpep_pickup_datetime", "10 minutes")) \
+    .agg(sum("passenger_count").alias("total_passengers")) \
+    .selectExpr("window.start as start_time", "window.end as end_time", "total_passengers") \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .queryName("live_passenger_count") \
+    .start()
+
+
+# %%
