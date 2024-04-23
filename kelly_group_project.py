@@ -5,9 +5,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, desc
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, TimestampType
 from pyspark.sql.functions import *
-#from pyspark.ml.regression import RandomForestRegressor
-#from pyspark.ml.feature import VectorAssembler
-#from pyspark.ml import Pipeline
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 #create session
 spark = SparkSession.builder.appName("NYC_Taxi_Streaming").getOrCreate()
@@ -38,6 +38,9 @@ schema = StructType([
 
 #read/stream data
 taxi_data = spark.readStream.schema(schema) .option("maxFilesPerTrigger", 1).csv("C:\\Users\\Sriniee\\Desktop\\SparkStreamProject\\SparkStreamProject\\Data").dropna()
+file_path= "C:\\Users\\Sriniee\\Desktop\\SparkStreamProject\\SparkStreamProject\\Data\\yellow_tripdata_2015-01.csv"
+csv_df = pd.read_csv(file_path)
+
 #%%
 # Start a streaming query to get the schema
 #schema_query = taxi_data.writeStream.format("memory").queryName("schema_data").outputMode("append").start()
@@ -76,6 +79,32 @@ averages = taxi_data.select(
     avg("total_amount").alias("Avg_Total_Amount")
 )
 averages_query = averages.writeStream.format("console").outputMode("complete").start()
+
+# Calculate averages
+avg_passenger_count = csv_df['passenger_count'].mean()
+avg_trip_distance = csv_df['trip_distance'].mean()
+avg_fare_amount = csv_df['fare_amount'].mean()
+avg_extra = csv_df['extra'].mean()
+avg_mta_tax = csv_df['mta_tax'].mean()
+avg_tip_amount = csv_df['tip_amount'].mean()
+avg_tolls_amount = csv_df['tolls_amount'].mean()
+avg_total_amount = csv_df['total_amount'].mean()
+averages_df = pd.DataFrame({
+    "Attribute": ["Passenger Count", "Trip Distance", "Fare Amount", "Extra", "MTA Tax", "Tip Amount", "Tolls Amount", "Total Amount"],
+    "Average Value": [avg_passenger_count, avg_trip_distance, avg_fare_amount, avg_extra, avg_mta_tax, avg_tip_amount, avg_tolls_amount, avg_total_amount]
+})
+print(averages_df)
+# Plotting the bar graph
+plt.figure(figsize=(10, 6))
+plt.barh(averages_df['Attribute'], averages_df['Average Value'], color='skyblue')
+plt.xlabel('Average Value')
+plt.ylabel('Attribute')
+plt.title('Average Values of Taxi Data Attributes')
+plt.show()
+
+
+
+
 
 # Aggregate the data by trip_distance and count the occurrences
 trip_distance_counts = taxi_data.groupBy("trip_distance").agg(count("*").alias("count"))
@@ -118,6 +147,28 @@ hourly_avg_fare = taxi_data.select(
 ).groupBy("pickup_hour").agg(avg("fare_amount").alias("avg_fare"))
 hourly_avg_fare_query = hourly_avg_fare.writeStream.format("console").outputMode("complete").start()
 
+
+
+
+#Pandas
+csv_df['tpep_pickup_datetime'] = pd.to_datetime(csv_df['tpep_pickup_datetime'])
+csv_df['pickup_hour'] = csv_df['tpep_pickup_datetime'].dt.hour
+hourly_avg_fare1 = csv_df.groupby('pickup_hour').agg({'fare_amount': 'mean'}).reset_index()
+hourly_avg_fare1.columns = ['pickup_hour', 'avg_fare']
+print(hourly_avg_fare1)
+
+
+plt.figure(figsize=(10, 6))
+plt.bar(hourly_avg_fare1['pickup_hour'], hourly_avg_fare1['avg_fare'], color='skyblue')
+plt.xlabel('Pickup Hour')
+plt.ylabel('Average Fare Amount')
+plt.title('Hourly Average Fare Amount')
+plt.xticks(hourly_avg_fare1['pickup_hour'])
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+
+
 #start streaming query for daily average fare calculation
 daily_avg_fare = taxi_data.select(
     "VendorID",
@@ -134,6 +185,21 @@ daily_avg_fare = taxi_data.select(
     dayofweek("tpep_pickup_datetime").alias("pickup_dayofweek")
 ).groupBy("pickup_dayofweek").agg(avg("fare_amount").alias("avg_fare"))
 daily_avg_fare_query = daily_avg_fare.writeStream.format("console").outputMode("complete").start()
+
+csv_df['pickup_dayofweek'] = csv_df['tpep_pickup_datetime'].dt.dayofweek
+
+daily_avg_fare1 = csv_df.groupby('pickup_dayofweek')['fare_amount'].mean().reset_index()
+daily_avg_fare1.columns = ['pickup_dayofweek', 'avg_fare']
+print(daily_avg_fare1)
+# Plotting the bar graph
+plt.figure(figsize=(10, 6))
+plt.bar(daily_avg_fare1['pickup_dayofweek'], daily_avg_fare1['avg_fare'], color='skyblue')
+plt.xlabel('Day of the Week')
+plt.ylabel('Average Fare Amount')
+plt.title('Daily Average Fare Amount')
+plt.xticks(range(7), ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
 
 ############ DON'T ATTEMPT TO MODEL OR PREDICT - NOT ENOUGH MEMORY IN LOCAL MODE
 #read CSVs into static dataframe
@@ -257,4 +323,6 @@ total_fare_query.awaitTermination()
 avg_passenger_query.awaitTermination()
 high_fare_trips_query.awaitTermination()
 live_passenger_count_query.awaitTermination()
+
+
 # %%
