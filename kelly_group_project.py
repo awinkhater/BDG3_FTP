@@ -37,7 +37,7 @@ schema = StructType([
 ])
 
 #read/stream data
-taxi_data = spark.readStream.schema(schema).csv("/Users/charanreddy/Desktop/GWU_DS/DATS 6450/SparkStreamProject/Data")
+taxi_data = spark.readStream.schema(schema) .option("maxFilesPerTrigger", 1).csv("C:\\Users\\Sriniee\\Desktop\\SparkStreamProject\\SparkStreamProject\\Data").dropna()
 #%%
 # Start a streaming query to get the schema
 #schema_query = taxi_data.writeStream.format("memory").queryName("schema_data").outputMode("append").start()
@@ -194,13 +194,6 @@ daily_avg_fare_query = daily_avg_fare.writeStream.format("console").outputMode("
 #schema_query.awaitTermination()
 #describe_query.awaitTermination()
 
-# Stop the streaming query
-shortest_trips_query.awaitTermination()
-largest_trips_query.awaitTermination()
-averages_query.awaitTermination()
-hourly_avg_fare_query.awaitTermination()
-daily_avg_fare_query.awaitTermination()
-#predictions_query.awaitTermination()
 
 
 
@@ -255,5 +248,13 @@ live_passenger_count_query = taxi_data \
     .queryName("live_passenger_count") \
     .start()
 
-
+shortest_trips_query.awaitTermination()
+largest_trips_query.awaitTermination()
+averages_query.awaitTermination()
+hourly_avg_fare_query.awaitTermination()
+daily_avg_fare_query.awaitTermination()
+total_fare_query.awaitTermination()
+avg_passenger_query.awaitTermination()
+high_fare_trips_query.awaitTermination()
+live_passenger_count_query.awaitTermination()
 # %%
